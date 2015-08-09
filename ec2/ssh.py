@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from prompt_toolkit.contrib.completers import WordCompleter
 from prompt_toolkit.shortcuts import get_input
-from prompt_toolkit.history import FileHistory
+from prompt_toolkit.history import History
 from prompt_toolkit.filters import Always
 
 import os
@@ -40,7 +40,7 @@ def ec2_active_instances(label_tag, filters):
 
     return instances
 
-def main():
+def cli():
     tag = "Name"
     filters = {}
     instances = ec2_active_instances(tag, filters)
@@ -48,7 +48,7 @@ def main():
     instances.sort()
 
     instance_completer = WordCompleter(instances, ignore_case=True)
-    history = FileHistory('~/.ec2_manager')
+    history = History()
 
     selecting_instance = True
 
@@ -64,4 +64,4 @@ def main():
             print 'Invalid IP: %s' % ip
 
 if __name__ == '__main__':
-    main()
+    cli()
