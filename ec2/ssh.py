@@ -33,10 +33,9 @@ def ec2_active_instances(label_tag, filters):
     reservations = ec2_instance.get_all_instances(**kwargs)
     for reservation in reservations:
         for instance in reservation.instances:
-            if instance.ip_address:
-                instances[instance.ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
-            else:
-                instances[instance.private_ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
+            ip_address = instance.ip_address if instance.ip_address else instance.private_ip_address
+
+            instances[ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
 
     return instances
 
