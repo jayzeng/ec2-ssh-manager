@@ -34,9 +34,9 @@ def ec2_active_instances(label_tag, filters):
     for reservation in reservations:
         for instance in reservation.instances:
             if instance.ip_address:
-                instances[instance.ip_address] = '%s (%s, %s)' % (instance.tags.get(label_tag), instance.instance_type, instance.ip_address)
+                instances[instance.ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
             else:
-                instances[instance.private_ip_address] = '%s (%s, %s)' % (instance.tags.get(label_tag), instance.instance_type, instance.ip_address)
+                instances[instance.private_ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
 
     return instances
 
@@ -44,24 +44,25 @@ def cli():
     tag = "Name"
     filters = {}
     instances = ec2_active_instances(tag, filters)
-    instances = instances.values()
-    instances.sort()
+    instance_ips = instances.keys()
+    instance_ips.sort()
 
-    instance_completer = WordCompleter(instances, ignore_case=True)
+    instance_completer = WordCompleter(instance_ips, meta_dict=instances, match_middle=True, WORD=True, ignore_case=True)
     history = History()
 
     selecting_instance = True
 
     while selecting_instance:
-        text = get_input('Pick an instance to ssh in: ', completer=instance_completer, history=history, enable_system_bindings=Always())
-        ip = text.split(' ')[-1].replace(')', '')
+        try:
+            ip = get_input('Pick an instance to ssh in: ', completer=instance_completer, history=history, enable_system_bindings=Always())
 
-        if netaddr.valid_ipv4(ip) == True:
-            subprocess.call(['ssh', ip])
-            selecting_instance = False
-
-        else:
-            print 'Invalid IP: %s' % ip
+            if netaddr.valid_ipv4(ip) == True:
+                subprocess.call(['ssh', ip])
+                selecting_instance = False
+            else:
+                print 'Invalid IP: %s' % ip
+        except EOFError:
+             break  # Control-D pressed.
 
 if __name__ == '__main__':
     cli()
