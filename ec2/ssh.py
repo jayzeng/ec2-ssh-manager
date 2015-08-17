@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 from __future__ import unicode_literals
 
+from prompt_toolkit import AbortAction
 from prompt_toolkit.contrib.completers import WordCompleter
-from prompt_toolkit.shortcuts import get_input
-from prompt_toolkit.history import History
+from prompt_toolkit.completion import Completion
 from prompt_toolkit.filters import Always
+from prompt_toolkit.history import History
+from prompt_toolkit.shortcuts import get_input
 
 import os
 import boto.ec2
 import subprocess
 import netaddr
+import collections
 
 def get_ec2_instance():
     region = os.environ.get("AWS_EC2_REGION")
@@ -31,30 +34,39 @@ def ec2_active_instances(label_tag, filters):
 
     ec2_instance = get_ec2_instance()
     reservations = ec2_instance.get_all_instances(**kwargs)
+
     for reservation in reservations:
         for instance in reservation.instances:
             ip_address = instance.ip_address if instance.ip_address else instance.private_ip_address
 
-            instances[ip_address] = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
+            instance_key = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
 
-    return instances
+            if instances.has_key(instance_key):
+                instance_key += ' ' + ip_address
+
+            instances[instance_key] = ip_address
+
+    return collections.OrderedDict(sorted(instances.items()))
 
 def cli():
     tag = "Name"
     filters = {}
     instances = ec2_active_instances(tag, filters)
-    instance_ips = instances.keys()
-    instance_ips.sort()
 
-    instance_completer = WordCompleter(instance_ips, meta_dict=instances, match_middle=True, WORD=True, ignore_case=True)
+    instance_ips = [item for sublist in instances.values() for item in sublist]
+
+    instance_completer = WordCompleter(instances.keys(), meta_dict=instances, match_middle=True, WORD=True, ignore_case=True)
     history = History()
 
     selecting_instance = True
 
     while selecting_instance:
         try:
-            ip = get_input('Pick an instance to ssh in: ', completer=instance_completer, history=history, enable_system_bindings=Always())
+            hostname = get_input('Pick an instance to ssh in: ', completer=instance_completer, history=history,
+                           on_abort=AbortAction.RETRY,
+                           enable_system_bindings=Always())
 
+            ip = instances[hostname]
             if netaddr.valid_ipv4(ip) == True:
                 subprocess.call(['ssh', ip])
                 selecting_instance = False
