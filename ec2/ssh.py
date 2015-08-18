@@ -13,6 +13,7 @@ import boto.ec2
 import subprocess
 import netaddr
 import collections
+from tabulate import tabulate
 
 def get_ec2_instance():
     region = os.environ.get("AWS_EC2_REGION")
@@ -37,12 +38,12 @@ def ec2_active_instances(label_tag, filters):
 
     for reservation in reservations:
         for instance in reservation.instances:
-            instance_key = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
+            instance_key = '%s (%s) %s' % (instance.tags.get(label_tag), instance.instance_type, instance.id)
+
             instances[instance_key] = instance.id
 
     return collections.OrderedDict(sorted(instances.items()))
 
-from tabulate import tabulate
 def get_instance_info(instance_id):
     ec2_instance = get_ec2_instance()
     reservations =  ec2_instance.get_all_instances([instance_id])
