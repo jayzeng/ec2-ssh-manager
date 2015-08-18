@@ -37,16 +37,21 @@ def ec2_active_instances(label_tag, filters):
 
     for reservation in reservations:
         for instance in reservation.instances:
-            ip_address = instance.ip_address if instance.ip_address else instance.private_ip_address
-
             instance_key = '%s (%s)' % (instance.tags.get(label_tag), instance.instance_type)
-
-            if instances.has_key(instance_key):
-                instance_key += ' ' + ip_address
-
-            instances[instance_key] = ip_address
+            instances[instance_key] = instance.id
 
     return collections.OrderedDict(sorted(instances.items()))
+
+from tabulate import tabulate
+def get_instance_info(instance_id):
+    ec2_instance = get_ec2_instance()
+    reservations =  ec2_instance.get_all_instances([instance_id])
+
+    instance = reservations[0].instances[0]
+
+    # only return a handful of useful fields
+    ip_address = instance.ip_address if instance.ip_address else instance.private_ip_address
+    return [['IP Address', ip_address], ['Host name', instance.public_dns_name], ['Type', instance.instance_type], ['State', instance.state]]
 
 def cli():
     tag = "Name"
@@ -60,18 +65,35 @@ def cli():
 
     selecting_instance = True
 
+    supported_commands = ['ssh', 'info']
+
     while selecting_instance:
         try:
-            hostname = get_input('Pick an instance to ssh in: ', completer=instance_completer, history=history,
+            input = get_input('Pick an instance: ', completer=instance_completer, history=history,
                            on_abort=AbortAction.RETRY,
                            enable_system_bindings=Always())
 
-            ip = instances[hostname]
-            if netaddr.valid_ipv4(ip) == True:
-                subprocess.call(['ssh', ip])
-                selecting_instance = False
+            command = ''
+            hostname = input
+            if input.find(' ') >= 0:
+                input_parts = input.split(' ')
+
+                if input_parts[0].lower() in supported_commands:
+                    hostname = ' '.join(input_parts[1:])
+                    command = input_parts[0].lower()
+
+            instance_id = instances[hostname]
+            instance_info = get_instance_info(instance_id)
+
+            if command.startswith('info'):
+                print tabulate(instance_info)
             else:
-                print 'Invalid IP: %s' % ip
+                ip = instance_info[0][1]
+                if netaddr.valid_ipv4(ip) == True:
+                    subprocess.call(['ssh', ip])
+                    selecting_instance = False
+                else:
+                    print 'Invalid IP: %s' % ip
         except EOFError:
              break  # Control-D pressed.
 
