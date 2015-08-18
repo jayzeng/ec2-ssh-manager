@@ -1,2 +1,4 @@
-# ec2-ssh-manager
-Make SSH into ec2 easier
+A tiny ec2 utiltiy
+-------------------
+:: Query EC2 server information with tab-completion
+:: SSH into any selected server
