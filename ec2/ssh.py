@@ -50,8 +50,8 @@ def get_instance_info(instance_id):
     instance = reservations[0].instances[0]
 
     # only return a handful of useful fields
-    ip_address = instance.ip_address if instance.ip_address else instance.private_ip_address
-    return [['IP Address', ip_address], ['Host name', instance.public_dns_name], ['Type', instance.instance_type], ['State', instance.state]]
+    return [['Private IP', instance.private_ip_address], ['Public IP', instance.ip_address], ['Host name', instance.public_dns_name],
+            ['Type', instance.instance_type], ['State', instance.state], ['Architecture', instance.architecture], ['AZ', instance.placement]]
 
 def cli():
     tag = "Name"
@@ -88,7 +88,11 @@ def cli():
             if command.startswith('info'):
                 print tabulate(instance_info)
             else:
-                ip = instance_info[0][1]
+                # Always try with public ip
+                if instance_info[1][1]:
+                    ip = instance_info[1][1]
+                else:
+                    ip = instance_info[0][1]
                 if netaddr.valid_ipv4(ip) == True:
                     subprocess.call(['ssh', ip])
                     selecting_instance = False
