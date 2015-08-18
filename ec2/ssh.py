@@ -79,14 +79,16 @@ def cli():
             if input.find(' ') >= 0:
                 input_parts = input.split(' ')
 
-                if input_parts[0].lower() in supported_commands:
+                input_word = input_parts[0].lower()
+
+                if any(input_word in item for item in supported_commands):
                     hostname = ' '.join(input_parts[1:])
                     command = input_parts[0].lower()
 
             instance_id = instances[hostname]
             instance_info = get_instance_info(instance_id)
 
-            if command.startswith('info'):
+            if command.startswith('i'):
                 print tabulate(instance_info)
             else:
                 # Always try with public ip
